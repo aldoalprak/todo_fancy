@@ -21,11 +21,13 @@ class User {
 
 	static show(req,res) {
 		UserModel.find()
-		.then(dataUsers=>{
-			res.status(200).send(dataUsers)
-		})
-		.catch(err=>{
-			res.status(400).json({message:err.message})
+		.populate('todoId','task_name')
+		.exec(function(err,dataUsers){
+			if(err) {
+				res.status(400).json({message:err.message})	
+			}else{
+				res.status(200).send(dataUsers)	
+			}
 		})
 	}
 

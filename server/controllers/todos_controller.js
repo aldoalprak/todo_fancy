@@ -1,13 +1,30 @@
 const TodoModel = require("../models/todo.js")
+const UserModel = require("../models/user.js")
 var jwt = require('jsonwebtoken')
 
 
 class Todo {
 
 	static add(req,res) {
-		TodoModel.create(req.body)
-		.then(result=>{
-			res.status(200).json({message:"task created"})
+		var decoded = jwt.verify(req.headers.token,process.env.JWT_SALT)
+		var dataTodo = {
+			task_name : req.body.task_name,
+			description : req.body.description
+		}
+		dataTodo.userId = decoded.userId
+		TodoModel.create(dataTodo)
+		.then(dataTodo=>{
+			UserModel.findOne({_id: decoded.userId})
+			.then(dataUser=>{
+				console.log(dataUser,dataTodo._id)
+				dataUser.todoId.push(dataTodo._id)
+				dataUser.save()
+			})
+			.catch(err=>{
+				res.json({message:err.message})
+			})
+
+			res.status(200).json({message:"task created and pushed"})
 		})
 		.catch(err=>{
 			res.status(400).json({message:err.message})
@@ -17,12 +34,13 @@ class Todo {
 	static show(req,res) {
 		var decoded = jwt.verify(req.headers.token,process.env.JWT_SALT)
 		TodoModel.find({ userId : decoded.userId})
-		.then(dataTodos=>{
-			res.status(200).send(dataTodos)
-			
-		})
-		.catch(err=>{
-			res.status(400).json({message:err.message})
+		.populate('userId','username')
+		.exec(function(err,dataTodos) {
+			if(err) {
+				res.status(400).json({message:err.message})	
+			}else{
+				res.status(200).send(dataTodos)	
+			}
 		})
 	}
 
